@@ -78,7 +78,7 @@
   when: not freeipaclient_ipaconf.stat.exists
   command: >
     {{ freeipaclient_install_command }}
-    {{'--hostname=' + freeipaclient_hostname  if freeipaclient_hostname is defined else '--hostname=' + ansible_nodename }}
+    {{'--hostname=' + freeipaclient_hostname  if freeipaclient_hostname is defined else '--hostname=' + ansible_fqdn }}
     --server={{ freeipaclient_server }}
     --domain={{ freeipaclient_domain }}
     --principal={{ freeipaclient_enroll_user }}
@@ -90,6 +90,17 @@
     {{ '--all-ip-addresses' if freeipaclient_all_ip_addresses else ''}}
     {{ '--no-ntp' if not freeipaclient_enable_ntp else ''}}
     {{ '--force-join' if freeipaclient_force_join else ''}}
+
+- name: Add PTR Record to DNS
+  ipa_dnsrecord:
+    ipa_host: "{{ freeipaclient_server }}"
+    ipa_user: "{{ freeipaclient_enroll_user }}"
+    ipa_pass: "{{ freeipaclient_enroll_pass }}"
+    state: present
+    zone_name: "{{ (ansible_default_ipv4.network | ipaddr('revdns')).split('.')[1:] | join('.') }}"
+    record_name: "{{ ansible_default_ipv4.address.split('.')[-1] }}"
+    record_type: 'PTR'
+    record_value: "{{ freeipaclient_hostname | default(ansible_fqdn) }}."
 
 - name: Include Ubuntu specific tasks
   tags:
